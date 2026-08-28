@@ -3,7 +3,7 @@
 const { io } = require('socket.io-client');
 
 const API = 'http://127.0.0.1:8000/public/api';
-const GAME = 'http://127.0.0.1:8083';
+const GAME = 'http://127.0.0.1:8081';
 
 async function api(path, { token, body, method = 'POST' } = {}) {
   const res = await fetch(`${API}${path}`, {

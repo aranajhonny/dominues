@@ -40,8 +40,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      reverb:
-        condition: service_started
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
