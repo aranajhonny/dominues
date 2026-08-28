@@ -1,0 +1,10 @@
+# Keep image lean: no local vendor (built in stage 1), no runtime cruft
+vendor/
+.env
+.git
+node_modules/
+storage/logs/*.log
+tests/
+.idea/
+.vscode/
+.DS_Store

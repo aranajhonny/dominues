@@ -1,0 +1,131 @@
+# =============================================================================
+# Dominues — homelab/Docker edition
+# Monorepo: Laravel 11 backend + Vue 3 portal + Node.js domino game + Reverb
+# =============================================================================
+
+name: dominues
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database — MySQL 8.0 (source of truth for balances & records)
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: dominues-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-dominues}
+      MYSQL_USER: ${DB_USERNAME:-dominues}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-dominuespass}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
+    ports:
+      - "3307:3306"          # host port 3307 to avoid clashing with local MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpass}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Backend — Laravel 11 API + admin panel (source of truth)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+    container_name: dominues-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      reverb:
+        condition: service_started
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      APP_KEY: ${APP_KEY:-}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-dominues}
+      DB_USERNAME: ${DB_USERNAME:-dominues}
+      DB_PASSWORD: ${DB_PASSWORD:-dominuespass}
+      BROADCAST_CONNECTION: reverb
+      REVERB_SERVER_HOST: reverb
+      REVERB_SERVER_PORT: 8082
+      REVERB_APP_ID: ${REVERB_APP_ID:-dominues-local}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-dominues-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-dominues-secret}
+      VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-dominues-key}
+      VITE_REVERB_HOST: localhost
+      VITE_REVERB_PORT: 8082
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost:8080}
+    ports:
+      - "8000:80"            # Laravel API + panel
+    volumes:
+      - backend_storage:/var/www/html/storage
+
+  # ---------------------------------------------------------------------------
+  # Reverb — Laravel WebSocket server (Pusher-compatible protocol, self-hosted)
+  # ---------------------------------------------------------------------------
+  reverb:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dominues-reverb
+    restart: unless-stopped
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8082"]
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY:-}
+      BROADCAST_CONNECTION: reverb
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8082
+      REVERB_APP_ID: ${REVERB_APP_ID:-dominues-local}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-dominues-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-dominues-secret}
+      REVERB_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
+    ports:
+      - "8082:8082"
+    depends_on:
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # Portal — Vue 3 SPA (nginx serves the build, proxies /api to backend)
+  # ---------------------------------------------------------------------------
+  portal:
+    build:
+      context: ./portal
+    container_name: dominues-portal
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:8000/public
+      VITE_GAME_URL: http://localhost:8081
+    ports:
+      - "8080:80"
+
+  # ---------------------------------------------------------------------------
+  # Game — Node.js + Socket.IO domino engine (money ops delegated to backend)
+  # ---------------------------------------------------------------------------
+  game:
+    build:
+      context: ./game
+    container_name: dominues-game
+    restart: unless-stopped
+    environment:
+      PORT: 8081
+      API_URL: http://backend:80
+      CORS_ORIGIN: http://localhost:8080
+    ports:
+      - "8081:8081"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  mysql_data:
+  backend_storage:

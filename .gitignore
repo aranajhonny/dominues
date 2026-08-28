@@ -1,0 +1,26 @@
+# --- Dominues monorepo root ---
+
+# env
+.env
+*.env.local
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# logs
+*.log
+npm-debug.log*
+
+# per-service (kept so inner gitignores are also respected)
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/database/database.sqlite
+portal/node_modules/
+portal/dist/
+game/node_modules/
