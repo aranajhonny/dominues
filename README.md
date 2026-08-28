@@ -108,6 +108,9 @@ restart the backend container.
   sandbox, move them to encrypted object storage and define a retention policy.
 - The money engine is **not** a real payment processor: deposits/withdrawals
   are operator-confirmed movements. Do not use for real funds.
+- **Port conflicts on this machine**: the game service binds **8081**; if
+  plataforma-track's local dev server is running (also 8081), start the game
+  with a different port: `PORT=8083 API_URL=http://localhost:8000 node app.js`.
 
 ## Local dev without Docker
 

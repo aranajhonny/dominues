@@ -4,7 +4,8 @@ set -e
 
 cd /var/www/html
 
-# 1. APP_KEY: generate once if not provided via env
+# 1. APP_KEY: generate once if not provided via env (container has no .env file)
+if [ ! -f .env ]; then cp .env.example .env; fi
 php artisan key:generate --force --no-interaction || true
 
 # 2. Wait for MySQL, then run migrations (no-op if already applied) and idempotent seeders
